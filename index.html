@@ -525,6 +525,96 @@ window.addEventListener('load', function() {
             if (typeof updateAll === 'function') updateAll();
         });
 });
+  // --- 기존 코드 아래에 이 함수들을 추가하거나 교체하세요 ---
+
+// 1. 데이터 내보내기 (JSON 다운로드)
+function exportData() {
+    const dataObj = {
+        tickers: TICKERS,
+        rows: ROWS,
+        cfg: CFG,
+        memo: localStorage.getItem('invest_memo')
+    };
+    const blob = new Blob([JSON.stringify(dataObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dudu_asset_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// 2. 데이터 불러오기 (JSON 파일 읽기)
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            // 데이터 구조 검증
+            if (!data.tickers || !data.rows) {
+                throw new Error("올바른 JSON 형식이 아닙니다.");
+            }
+
+            // 변수 업데이트 및 로컬 스토리지 저장
+            TICKERS = data.tickers;
+            ROWS = data.rows;
+            if (data.cfg) CFG = data.cfg;
+            if (data.memo) {
+                localStorage.setItem('invest_memo', data.memo);
+                document.getElementById('memo-area').value = data.memo;
+            }
+
+            alert("데이터를 성공적으로 불러왔습니다.");
+            render(); // 화면 즉시 갱신
+        } catch (err) {
+            alert("파일 읽기 오류: " + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+// 3. 종목(Ticker) 추가 기능 누락 수정
+function addTicker() {
+    const input = document.getElementById('new-ticker');
+    const ticker = input.value.toUpperCase().trim();
+    if (ticker && !TICKERS.includes(ticker)) {
+        TICKERS.push(ticker);
+        // 기존 기록들에 새 티커용 0값 추가
+        ROWS.forEach(r => r.vals.push(0));
+        input.value = '';
+        render();
+    }
+}
+
+// 4. 티커 리스트 렌더링 기능 추가 (render 함수 안에 포함되어야 함)
+// 이 부분은 기존 render() 함수 내부의 적절한 위치에 추가하거나, 
+// 아래와 같이 별도 함수로 빼서 render()에서 호출하게 수정하세요.
+function updateTickerListUI() {
+    const list = document.getElementById('ticker-list');
+    list.innerHTML = TICKERS.map(t => `
+        <span class="btn btn-ghost" style="display:flex; align-items:center; gap:8px;">
+            ${t}
+            <span onclick="removeTicker('${t}')" style="cursor:pointer; color:var(--red); font-weight:bold;">×</span>
+        </span>
+    `).join('');
+}
+
+function removeTicker(t) {
+    if (TICKERS.length <= 1) return alert("최소 한 개의 종목은 있어야 합니다.");
+    if (confirm(`${t} 종목을 삭제하시겠습니까? 관련 기록도 함께 삭제됩니다.`)) {
+        const idx = TICKERS.indexOf(t);
+        TICKERS.splice(idx, 1);
+        ROWS.forEach(r => r.vals.splice(idx, 1));
+        render();
+    }
+}
+
+// 기존 render 함수 마지막 줄에 updateTickerListUI(); 를 추가하세요.
+  
 </script>
 </body>
 </html>
